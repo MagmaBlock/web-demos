@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>视频多节点竞速 Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        background-color: #f0f0f0;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      #videoPlayer {
+        width: 100%;
+        max-width: 800px;
+        height: auto;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .info-box,
+      .console-box,
+      .sources-box {
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        width: 100%;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .info-item {
+        margin-bottom: 10px;
+      }
+      .info-label {
+        font-weight: bold;
+        margin-right: 5px;
+      }
+      .source-url {
+        word-break: break-all;
+        font-size: 0.9em;
+        color: #555;
+      }
+      button {
+        margin-top: 10px;
+        padding: 5px 10px;
+        font-size: 14px;
+        cursor: pointer;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      .source-input {
+        width: calc(100% - 70px);
+        padding: 5px;
+        margin-right: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      #console {
+        height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 10px;
+        font-family: monospace;
+        background-color: #f9f9f9;
+      }
+      .source-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <video id="videoPlayer" controls></video>
+    <div class="info-box">
+      <div class="info-item">
+        <span class="info-label">状态:</span>
+        <span id="status">等待添加视频源</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">当前源:</span>
+        <span id="currentSource">尚未选择</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">源 URL:</span>
+        <div id="sourceUrl" class="source-url"></div>
+      </div>
+    </div>
+    <div class="sources-box">
+      <h3>视频源</h3>
+      <div id="sourceList"></div>
+      <button id="addSourceButton">添加新视频源</button>
+    </div>
+    <button id="startPlayButton">开始播放</button>
+    <button id="debugButton">强制重新测速</button>
+
+    <script>
+      const video = document.getElementById("videoPlayer");
+      const statusElement = document.getElementById("status");
+      const currentSourceElement = document.getElementById("currentSource");
+      const debugButton = document.getElementById("debugButton");
+      const startPlayButton = document.getElementById("startPlayButton");
+      const addSourceButton = document.getElementById("addSourceButton");
+      const sourceListElement = document.getElementById("sourceList");
+      const testSize = 5 * 1024 * 1024; // 5 MB in bytes
+      const timeout = 10000; // 10 seconds timeout
+      const stallThreshold = 10000; // 10 seconds stall threshold
+      const maxConcurrentTests = 3; // 控制并发测速的线程数
+
+      let currentSource = "";
+      let stallDetectionInterval;
+      let isTestingSpeed = false;
+
+      function log(message) {
+        console.log(message);
+      }
+
+      function addSourceInput() {
+        const sourceItem = document.createElement("div");
+        sourceItem.className = "source-item";
+        sourceItem.innerHTML = `
+          <input type="text" class="source-input" placeholder="输入视频源 URL">
+          <button class="remove-source">删除</button>
+        `;
+        sourceListElement.appendChild(sourceItem);
+
+        sourceItem
+          .querySelector(".remove-source")
+          .addEventListener("click", () => {
+            sourceListElement.removeChild(sourceItem);
+          });
+      }
+
+      function getVideoSources() {
+        return Array.from(sourceListElement.querySelectorAll(".source-input"))
+          .map((input) => input.value.trim())
+          .filter(Boolean);
+      }
+
+      async function testSpeed(url) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        try {
+          const start = Date.now();
+          const response = await fetch(url, {
+            headers: { Range: `bytes=0-${testSize - 1}` },
+            signal: controller.signal,
+          });
+          const connectionTime = Date.now() - start;
+
+          if (connectionTime > 5000) {
+            clearTimeout(timeoutId);
+            return { speed: 0, connectionTime, error: "连接时间过长" };
+          }
+
+          const reader = response.body.getReader();
+          let receivedLength = 0;
+          let startTime = Date.now();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            receivedLength += value.length;
+            if (receivedLength >= testSize) break;
+          }
+
+          const endTime = Date.now();
+          clearTimeout(timeoutId);
+
+          const downloadTime = (endTime - startTime) / 1000; // 转换为秒
+          const speedBps = (receivedLength * 8) / downloadTime; // 转换为 bits per second
+
+          return { speed: speedBps, connectionTime, error: null };
+        } catch (error) {
+          clearTimeout(timeoutId);
+          return {
+            speed: 0,
+            connectionTime: 0,
+            error: error.name === "AbortError" ? "timeout" : error,
+          };
+        }
+      }
+
+      async function selectFastestSource() {
+        if (isTestingSpeed) {
+          log("测速已在进行中，请等待当前测速完成。嘎！");
+          return null;
+        }
+
+        isTestingSpeed = true;
+        statusElement.textContent = "正在测速...";
+        const videoSources = getVideoSources();
+        const results = [];
+
+        for (let i = 0; i < videoSources.length; i += maxConcurrentTests) {
+          const batch = videoSources.slice(i, i + maxConcurrentTests);
+          const batchPromises = batch.map(async (source, index) => {
+            const sourceIndex = i + index;
+            log(`正在测试源 ${sourceIndex + 1}: ${source} 嘎！`);
+            const { speed, connectionTime, error } = await testSpeed(source);
+            if (!error) {
+              log(
+                `源 ${sourceIndex + 1} 速度: ${formatSpeed(
+                  speed
+                )}, 连接时间: ${connectionTime}ms 嘎！`
+              );
+              results.push({ source, speed, connectionTime });
+            } else {
+              log(`源 ${sourceIndex + 1} 测试失败: ${error} 嘎！`);
+            }
+          });
+          await Promise.all(batchPromises);
+        }
+
+        let fastestSource = null;
+        let fastestSpeed = 0;
+
+        if (results.length > 0) {
+          // 首先考虑连接时间小于5秒的源
+          const fastSources = results.filter(
+            (result) => result.connectionTime <= 5000
+          );
+
+          if (fastSources.length > 0) {
+            const fastest = fastSources.reduce((prev, current) =>
+              current.speed > prev.speed ? current : prev
+            );
+            fastestSource = fastest.source;
+            fastestSpeed = fastest.speed;
+          } else {
+            // 如果所有源的连接时间都超过5秒，则选择最快的
+            const fastest = results.reduce((prev, current) =>
+              current.speed > prev.speed ? current : prev
+            );
+            fastestSource = fastest.source;
+            fastestSpeed = fastest.speed;
+          }
+
+          log(
+            `测速完成，最快源: ${fastestSource} (${formatSpeed(
+              fastestSpeed
+            )}) 嘎！`
+          );
+          statusElement.textContent = `测速完成，选择最快源`;
+        } else {
+          log(`无法找到可用的视频源 嘎！`);
+          statusElement.textContent = "无法找到可用的视频源";
+        }
+
+        isTestingSpeed = false;
+        return fastestSource;
+      }
+
+      function formatSpeed(bps) {
+        const mbps = bps / 1024 / 1024;
+        return mbps.toFixed(2) + " Mbps";
+      }
+
+      function initializeVideo(source) {
+        const currentTime = video.currentTime;
+        video.src = source;
+        video.currentTime = currentTime;
+        currentSource = source;
+        currentSourceElement.textContent = `当前播放源: ${
+          getVideoSources().indexOf(source) + 1
+        }`;
+        document.getElementById("sourceUrl").textContent = source;
+        video.play();
+      }
+
+      function startStallDetection() {
+        let lastPlayedTime = video.currentTime;
+        let stallStartTime = null;
+
+        clearInterval(stallDetectionInterval);
+        stallDetectionInterval = setInterval(() => {
+          if (video.paused) {
+            lastPlayedTime = video.currentTime;
+            stallStartTime = null;
+            return;
+          }
+
+          if (video.currentTime === lastPlayedTime) {
+            if (!stallStartTime) {
+              stallStartTime = Date.now();
+            } else if (Date.now() - stallStartTime > stallThreshold) {
+              log("检测到卡顿，正在重新测速...");
+              statusElement.textContent = "检测到卡顿，正在重新测速...";
+              restartPlayback();
+            }
+          } else {
+            lastPlayedTime = video.currentTime;
+            stallStartTime = null;
+          }
+        }, 1000);
+      }
+
+      async function restartPlayback() {
+        const newSource = await selectFastestSource();
+        if (newSource && newSource !== currentSource) {
+          initializeVideo(newSource);
+        }
+        startStallDetection();
+      }
+
+      debugButton.addEventListener("click", () => {
+        log("强制重新测速...");
+        statusElement.textContent = "强制重新测速...";
+        restartPlayback();
+      });
+
+      startPlayButton.addEventListener("click", async () => {
+        const videoSources = getVideoSources();
+        if (videoSources.length > 0) {
+          const initialSource = await selectFastestSource();
+          if (initialSource) {
+            initializeVideo(initialSource);
+            startStallDetection();
+          } else {
+            log("没有可用的视频源");
+          }
+        } else {
+          log("请添加视频源");
+        }
+      });
+
+      addSourceButton.addEventListener("click", addSourceInput);
+
+      async function start() {
+        const videoSources = getVideoSources();
+        if (videoSources.length > 0) {
+          await selectFastestSource();
+        } else {
+          log("请添加视频源");
+        }
+      }
+
+      // 初始添加两个视频源输入框
+      addSourceInput();
+      addSourceInput();
+    </script>
+  </body>
+</html>
