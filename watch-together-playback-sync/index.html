@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Sync Calculator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      #userInputs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .userInput {
+        display: flex;
+        align-items: center;
+      }
+      input {
+        margin-left: 5px;
+        width: 60px;
+      }
+      button {
+        display: block;
+        margin: 20px auto;
+        padding: 10px 20px;
+        font-size: 16px;
+      }
+      #results {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Video Sync Calculator</h1>
+    <div id="userInputs">
+      <div class="userInput">
+        <label for="userA">User A:</label>
+        <input type="number" id="userA" value="100" step="0.1" />
+      </div>
+      <div class="userInput">
+        <label for="userB">User B:</label>
+        <input type="number" id="userB" value="98" step="0.1" />
+      </div>
+      <div class="userInput">
+        <label for="userC">User C:</label>
+        <input type="number" id="userC" value="103" step="0.1" />
+      </div>
+      <div class="userInput">
+        <label for="userD">User D:</label>
+        <input type="number" id="userD" value="97" step="0.1" />
+      </div>
+    </div>
+    <button onclick="calculate()">Calculate Sync</button>
+    <div id="results"></div>
+
+    <script>
+      function calculateOptimalSync(users, maxSpeedDifference = 0.2) {
+        if (users.length < 2) {
+          throw new Error(
+            "At least two users are required for synchronization"
+          );
+        }
+
+        const fastestUser = users.reduce((fastest, user) =>
+          user.progress > fastest.progress ? user : fastest
+        );
+        const slowestUser = users.reduce((slowest, user) =>
+          user.progress < slowest.progress ? user : slowest
+        );
+
+        const maxTimeDifference = fastestUser.progress - slowestUser.progress;
+
+        if (maxTimeDifference < 0.1) {
+          return users.map((user) => ({
+            userId: user.id,
+            speedAdjustment: 0,
+            syncTime: 0,
+          }));
+        }
+
+        const optimalSyncTime = maxTimeDifference / (2 * maxSpeedDifference);
+
+        const results = users.map((user) => {
+          const progressDifference = fastestUser.progress - user.progress;
+          const speedAdjustment =
+            (progressDifference / maxTimeDifference) *
+              (2 * maxSpeedDifference) -
+            maxSpeedDifference;
+
+          return {
+            userId: user.id,
+            speedAdjustment: Math.round(speedAdjustment * 1000) / 1000,
+            syncTime: Math.round(optimalSyncTime * 100) / 100,
+          };
+        });
+
+        return results;
+      }
+
+      function calculate() {
+        const users = [
+          {
+            id: "A",
+            progress: parseFloat(document.getElementById("userA").value),
+            isHost: true,
+          },
+          {
+            id: "B",
+            progress: parseFloat(document.getElementById("userB").value),
+            isHost: false,
+          },
+          {
+            id: "C",
+            progress: parseFloat(document.getElementById("userC").value),
+            isHost: false,
+          },
+          {
+            id: "D",
+            progress: parseFloat(document.getElementById("userD").value),
+            isHost: false,
+          },
+        ];
+
+        try {
+          const syncResults = calculateOptimalSync(users, 0.1);
+          let resultHtml = "<h2>Sync Results:</h2>";
+          syncResults.forEach((result) => {
+            resultHtml += `<p>User ${result.userId}: Speed Adjustment: ${result.speedAdjustment}, Sync Time: ${result.syncTime}</p>`;
+          });
+          document.getElementById("results").innerHTML = resultHtml;
+        } catch (error) {
+          document.getElementById(
+            "results"
+          ).innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        }
+      }
+    </script>
+  </body>
+</html>
