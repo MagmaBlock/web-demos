@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>视频字幕播放器</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f0f0f0;
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+      }
+      #videoContainer {
+        position: relative;
+        width: 100%;
+        margin-top: 20px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      video {
+        width: 100%;
+        border-radius: 5px;
+      }
+      input[type="file"] {
+        display: block;
+        margin: 10px auto;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #fff;
+      }
+      #fullscreenButton {
+        display: block;
+        margin: 10px auto;
+        padding: 10px 20px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      #fullscreenButton:hover {
+        background-color: #45a049;
+      }
+      #videoContainer:fullscreen {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+      }
+      #videoContainer:fullscreen video {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>本地视频+字幕一起看播放器</h1>
+    <input
+      type="file"
+      id="videoInput"
+      accept=".mp4,.mkv,.avi,.mov,.wmv,.flv,.webm"
+    />
+    <input type="file" id="subtitleInput" accept=".ass" />
+    <div id="videoContainer"></div>
+    <button id="fullscreenButton">点我全屏（有软字幕时使用）</button>
+
+    <script type="module">
+      import ASS from "https://cdn.jsdelivr.net/npm/assjs@0.1/dist/ass.js";
+
+      const videoInput = document.getElementById("videoInput");
+      const subtitleInput = document.getElementById("subtitleInput");
+      const videoContainer = document.getElementById("videoContainer");
+      const fullscreenButton = document.getElementById("fullscreenButton");
+      let ass;
+
+      videoInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        const videoURL = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.src = videoURL;
+        video.controls = true;
+        videoContainer.innerHTML = "";
+        videoContainer.appendChild(video);
+
+        if (ass) {
+          ass.destroy();
+        }
+      });
+
+      subtitleInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target.result;
+          const video = videoContainer.querySelector("video");
+          if (video) {
+            ass = new ASS(content, video);
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      fullscreenButton.addEventListener("click", () => {
+        if (!document.fullscreenElement) {
+          if (videoContainer.requestFullscreen) {
+            videoContainer.requestFullscreen();
+          } else if (videoContainer.mozRequestFullScreen) {
+            videoContainer.mozRequestFullScreen();
+          } else if (videoContainer.webkitRequestFullscreen) {
+            videoContainer.webkitRequestFullscreen();
+          } else if (videoContainer.msRequestFullscreen) {
+            videoContainer.msRequestFullscreen();
+          }
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+          }
+        }
+      });
+    </script>
+    <script src="https://fastly.jsdelivr.net/gh/VideoTogether/VideoTogether@latest/release/extension.website.user.js"></script>
+  </body>
+</html>
