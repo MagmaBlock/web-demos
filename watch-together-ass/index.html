@@ -26,25 +26,29 @@
         width: 100%;
         border-radius: 5px;
       }
-      input[type="file"] {
+      input[type="file"],
+      input[type="text"],
+      .url-input-container {
         display: block;
         margin: 10px auto;
         padding: 10px;
         border: 1px solid #ddd;
         border-radius: 5px;
         background-color: #fff;
+        width: 80%;
+        box-sizing: border-box;
       }
-      #fullscreenButton {
-        display: block;
-        margin: 10px auto;
+      button {
         padding: 10px 20px;
         background-color: #4caf50;
         color: white;
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        text-wrap: nowrap;
+        overflow: hidden;
       }
-      #fullscreenButton:hover {
+      button:hover {
         background-color: #45a049;
       }
       #videoContainer:fullscreen {
@@ -60,15 +64,35 @@
         width: auto;
         height: auto;
       }
+      .url-input-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .url-input-container input[type="text"] {
+        flex-grow: 1;
+        margin: 0 10px 0 0;
+        width: auto;
+      }
     </style>
   </head>
   <body>
-    <h1>本地视频+字幕一起看播放器</h1>
+    <h1>视频+字幕一起看播放器</h1>
+    <div>
+      <p>1. 选择本地视频或者输入一个在线视频 URL</p>
+    </div>
     <input
       type="file"
       id="videoInput"
       accept=".mp4,.mkv,.avi,.mov,.wmv,.flv,.webm"
     />
+    <div class="url-input-container">
+      <input type="text" id="videoUrl" placeholder="输入在线视频URL" />
+      <button id="loadVideoButton">加载在线视频</button>
+    </div>
+    <div>
+      <p>2. 选择 ASS 字幕文件（可选）</p>
+    </div>
     <input type="file" id="subtitleInput" accept=".ass" />
     <div id="videoContainer"></div>
     <button id="fullscreenButton">点我全屏（有软字幕时使用）</button>
@@ -77,22 +101,35 @@
       import ASS from "https://cdn.jsdelivr.net/npm/assjs@0.1/dist/ass.js";
 
       const videoInput = document.getElementById("videoInput");
+      const videoUrl = document.getElementById("videoUrl");
+      const loadVideoButton = document.getElementById("loadVideoButton");
       const subtitleInput = document.getElementById("subtitleInput");
       const videoContainer = document.getElementById("videoContainer");
       const fullscreenButton = document.getElementById("fullscreenButton");
       let ass;
 
-      videoInput.addEventListener("change", (event) => {
-        const file = event.target.files[0];
-        const videoURL = URL.createObjectURL(file);
+      function loadVideo(src) {
         const video = document.createElement("video");
-        video.src = videoURL;
+        video.src = src;
         video.controls = true;
         videoContainer.innerHTML = "";
         videoContainer.appendChild(video);
 
         if (ass) {
           ass.destroy();
+        }
+      }
+
+      videoInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        const videoURL = URL.createObjectURL(file);
+        loadVideo(videoURL);
+      });
+
+      loadVideoButton.addEventListener("click", () => {
+        const url = videoUrl.value.trim();
+        if (url) {
+          loadVideo(url);
         }
       });
 
