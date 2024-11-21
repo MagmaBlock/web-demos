@@ -21,10 +21,9 @@
       }
       #userInputs {
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 20px;
         margin-bottom: 30px;
-        justify-content: center;
       }
       .userInput {
         display: flex;
@@ -43,17 +42,25 @@
         padding: 8px;
         border: 1px solid #ccc;
         border-radius: 3px;
-        width: 80px;
+        width: 100px;
         transition: border-color 0.3s;
       }
       input:focus {
         border-color: #4a90e2;
         outline: none;
       }
-      button {
-        display: block;
-        margin: 30px auto;
-        padding: 12px 24px;
+      .result {
+        margin-left: 10px;
+        font-size: 0.9em;
+        color: #555;
+      }
+      .button-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      .button-container button {
+        padding: 10px 20px;
         font-size: 16px;
         color: #fff;
         background-color: #4a90e2;
@@ -61,59 +68,49 @@
         border-radius: 5px;
         cursor: pointer;
         transition: background-color 0.3s;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-right: 10px;
+      }
+      .button-container button:last-child {
+        margin-right: 0;
       }
       button:hover {
         background-color: #357abd;
-      }
-      #results {
-        border: 1px solid #ddd;
-        padding: 20px;
-        margin-top: 30px;
-        background: #fff;
-        border-radius: 5px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .result-item {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 10px;
-        padding: 10px;
-        background-color: #f0f0f0;
-        border-radius: 5px;
-      }
-      .result-label {
-        font-weight: bold;
-        color: #333;
-      }
-      .result-value {
-        color: #555;
       }
     </style>
   </head>
   <body>
     <h1>视频同步计算 Demo</h1>
+    <div class="button-container">
+      <button onclick="addUser()">添加用户</button>
+      <button onclick="removeUser()">移除用户</button>
+    </div>
     <div id="userInputs">
-      <div class="userInput">
-        <label for="userA">用户 A:</label>
-        <input type="number" id="userA" value="100" step="0.1" />
+      <div class="userInput" id="userInputA">
+        <label for="userA">用户 A 播放进度：</label>
+        <input type="number" id="userA" value="100" step="0.1" oninput="calculate()" />
+        <span class="result" id="resultA"></span>
       </div>
-      <div class="userInput">
-        <label for="userB">用户 B:</label>
-        <input type="number" id="userB" value="98" step="0.1" />
+      <div class="userInput" id="userInputB">
+        <label for="userB">用户 B 播放进度：</label>
+        <input type="number" id="userB" value="98" step="0.1" oninput="calculate()" />
+        <span class="result" id="resultB"></span>
       </div>
-      <div class="userInput">
-        <label for="userC">用户 C:</label>
-        <input type="number" id="userC" value="103" step="0.1" />
+      <div class="userInput" id="userInputC">
+        <label for="userC">用户 C 播放进度：</label>
+        <input type="number" id="userC" value="103" step="0.1" oninput="calculate()" />
+        <span class="result" id="resultC"></span>
       </div>
-      <div class="userInput">
-        <label for="userD">用户 D:</label>
-        <input type="number" id="userD" value="97" step="0.1" />
+      <div class="userInput" id="userInputD">
+        <label for="userD">用户 D 播放进度：</label>
+        <input type="number" id="userD" value="97" step="0.1" oninput="calculate()" />
+        <span class="result" id="resultD"></span>
       </div>
     </div>
-    <button onclick="calculate()">计算同步</button>
-    <div id="results"></div>
 
     <script>
+      let userIdCounter = 4;
+
       function calculateOptimalSync(users, maxSpeedDifference = 0.2) {
         if (users.length < 2) {
           throw new Error(
@@ -158,47 +155,49 @@
       }
 
       function calculate() {
-        const users = [
-          {
-            id: "A",
-            progress: parseFloat(document.getElementById("userA").value),
-            isHost: true,
-          },
-          {
-            id: "B",
-            progress: parseFloat(document.getElementById("userB").value),
-            isHost: false,
-          },
-          {
-            id: "C",
-            progress: parseFloat(document.getElementById("userC").value),
-            isHost: false,
-          },
-          {
-            id: "D",
-            progress: parseFloat(document.getElementById("userD").value),
-            isHost: false,
-          },
-        ];
+        const userInputs = document.querySelectorAll('.userInput');
+        const users = Array.from(userInputs).map((input, index) => ({
+          id: input.id.replace('userInput', ''),
+          progress: parseFloat(document.getElementById(`user${input.id.replace('userInput', '')}`).value),
+          isHost: index === 0,
+        }));
 
         try {
           const syncResults = calculateOptimalSync(users, 0.1);
-          let resultHtml = "<h2>计算结果</h2>";
           syncResults.forEach((result) => {
-            resultHtml += `
-              <div class="result-item">
-                <span class="result-label">用户 ${result.userId}:</span>
-                <span class="result-value">速度调整: ${result.speedAdjustment}, 同步时间: ${result.syncTime}</span>
-              </div>
-            `;
+            document.getElementById(`result${result.userId}`).textContent = `速度调整: ${result.speedAdjustment}, 持续时间: ${result.syncTime}`;
           });
-          document.getElementById("results").innerHTML = resultHtml;
         } catch (error) {
-          document.getElementById(
-            "results"
-          ).innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+          document.getElementById("results").innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
         }
       }
+
+      function addUser() {
+        userIdCounter++;
+        const userId = String.fromCharCode(64 + userIdCounter);
+        const userInputDiv = document.createElement('div');
+        userInputDiv.className = 'userInput';
+        userInputDiv.id = `userInput${userId}`;
+        userInputDiv.innerHTML = `
+          <label for="user${userId}">用户 ${userId} 播放进度：</label>
+          <input type="number" id="user${userId}" value="100" step="0.1" oninput="calculate()" />
+          <span class="result" id="result${userId}"></span>
+        `;
+        document.getElementById('userInputs').appendChild(userInputDiv);
+        calculate();
+      }
+
+      function removeUser() {
+        const userInputs = document.querySelectorAll('.userInput');
+        if (userInputs.length > 1) {
+          userInputs[userInputs.length - 1].remove();
+          userIdCounter--;
+          calculate();
+        }
+      }
+
+      // Initial calculation on page load
+      calculate();
     </script>
   </body>
 </html>
