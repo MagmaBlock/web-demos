@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magma 贷</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            font-family: 'Arial', sans-serif;
+        }
+        .app-container {
+            text-align: center;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .app-container:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+        }
+        .logo {
+            font-size: 150px;
+            margin-bottom: 20px; /* 调整间距 */
+            animation: fadeIn 2s ease-in-out;
+        }
+        .button {
+            padding: 20px 40px;
+            font-size: 24px;
+            color: #ffffff;
+            background-color: #ff6600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            transition: background-color 0.3s, transform 0.3s;
+            margin-top: 20px; /* 添加间距 */
+        }
+        .button:hover {
+            background-color: #e65100;
+            transform: scale(1.05);
+        }
+        .result {
+            display: none;
+            font-size: 36px;
+            color: #ff6600;
+            margin-top: 20px; /* 调整间距 */
+            font-weight: bold;
+            animation: slideIn 1s ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes slideIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .app-header {
+            font-size: 32px;
+            color: #333333;
+            margin-bottom: 20px; /* 调整间距 */
+            font-weight: bold;
+            animation: fadeIn 2s ease-in-out;
+        }
+        .app-description {
+            font-size: 18px;
+            color: #666666;
+            margin-bottom: 20px; /* 调整间距 */
+            animation: fadeIn 2s ease-in-out;
+        }
+        .contact-info {
+            font-size: 16px;
+            color: #999999;
+            margin-top: 20px; /* 调整间距 */
+            animation: fadeIn 2s ease-in-out;
+        }
+        .social-icons {
+            margin-top: 20px; /* 调整间距 */
+            animation: fadeIn 2s ease-in-out;
+        }
+        .social-icons a {
+            margin: 0 10px;
+            color: #333333;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .social-icons a:hover {
+            color: #ff6600;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="logo">💰</div>
+        <div class="app-header">Magma 贷</div>
+        <div class="app-description">快速贷款，轻松借款</div>
+        <button class="button" onclick="showResult()">点击查看您的额度</button>
+        <div class="result" id="result">10,000 元 立即可借</div>
+        <div class="contact-info">如有疑问，请联系客服：magmablock@qq.com</div>
+        <div class="social-icons">
+            <a href="https://weibo.com/" target="_blank">微博</a>
+            <a href="https://www.zhihu.com/" target="_blank">知乎</a>
+            <a href="https://www.douban.com/" target="_blank">豆瓣</a>
+        </div>
+    </div>
+
+    <script>
+        function showResult() {
+            document.querySelector('.button').style.display = 'none';
+            document.getElementById('result').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
